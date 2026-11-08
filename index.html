@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>NOVA PLAYGROUND — Bêta</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;800&display=swap');
+:root{--cyan:#38e8ff;--violet:#9b65ff;--bg:#070b18}
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:var(--bg);color:white;font-family:Inter,Arial}
+canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}
+.top{position:absolute;top:16px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{font:900 clamp(18px,3vw,28px) Orbitron;letter-spacing:2px;text-shadow:0 0 18px #36dfff}
+.logo span{color:var(--cyan)}.pill{background:#0b1730cc;border:1px solid #49ddff66;border-radius:18px;padding:10px 14px;box-shadow:0 0 20px #25dfff22;font-weight:800}
+#coins{color:#ffe477}.panel{pointer-events:auto;background:linear-gradient(145deg,#101c36eF,#090f20ed);border:1px solid #55dfff66;border-radius:18px;box-shadow:0 0 35px #25cfff22;backdrop-filter:blur(14px)}
+#left{position:absolute;left:18px;top:85px;width:210px;padding:14px}
+h3{font:700 13px Orbitron;color:var(--cyan);letter-spacing:1px;margin:0 0 10px}
+button{cursor:pointer;color:white;background:linear-gradient(100deg,#176a91,#5533a5);border:1px solid #67eaff88;border-radius:12px;padding:10px 12px;font-weight:800;transition:.2s}
+button:hover{filter:brightness(1.3);transform:translateY(-2px);box-shadow:0 0 18px #3ceaff55}
+#left button{width:100%;margin:4px 0;text-align:left}
+#right{position:absolute;right:18px;top:85px;width:220px;padding:14px}
+#right p{font-size:12px;line-height:1.5;color:#c4d4ef}
+#bottom{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center}
+#hint{position:absolute;bottom:82px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#071327cc;border:1px solid #43dfff66;border-radius:20px;padding:9px 15px;font-size:12px}
+#modal{display:none;position:fixed;inset:0;background:#020612bb;align-items:center;justify-content:center;padding:18px;pointer-events:auto}
+#modal .box{max-width:460px;width:100%;padding:22px}
+#modal h2{font:800 22px Orbitron;color:var(--cyan);margin-top:0}
+#modal .items{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#touch{display:none;position:fixed;bottom:22px;left:18px;right:18px;justify-content:space-between;pointer-events:none}
+.pad{pointer-events:auto;display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,44px);gap:5px}
+.pad button{padding:0;background:#0c234bcc}
+#kick{pointer-events:auto;align-self:end;border-radius:50%;width:68px;height:68px}
+@media(max-width:800px){#left{top:78px;width:155px;padding:9px}#right{top:auto;bottom:130px;right:12px;width:155px;padding:9px}#right p{font-size:10px}.top{top:10px;left:10px;right:10px}.pill{padding:8px;font-size:11px}#bottom{bottom:105px}#hint{bottom:180px;font-size:10px}#touch{display:flex}#left button{font-size:11px;padding:8px}}
+</style>
+</head>
+<body>
+<div id="hud">
+ <div class="top"><div class="logo">NOVA <span>PLAYGROUND</span></div><div class="pill">BÊTA PRIVÉE · v0.1</div><div class="pill" id="coins">✦ 500 NOVA</div></div>
+ <div id="left" class="panel"><h3>PORTAILS DES MONDES</h3>
+  <button onclick="setWorld('football')">⚽ Football 3D</button><button onclick="setWorld('race')">🏎️ Circuit néon</button><button onclick="setWorld('parkour')">🏃 Parkour</button><button onclick="setWorld('home')">🏡 Quartier NOVA</button><button onclick="openShop()">🛍️ Boutique</button></div>
+ <div id="right" class="panel"><h3 id="worldTitle">STADE NOVA</h3><p id="worldDesc">Entre sur le terrain, approche du ballon et appuie sur ESPACE pour tirer.</p><p><b>Commandes</b><br>WASD / flèches : bouger<br>Souris : orienter la caméra<br>Espace : sauter / tirer<br>E : interaction</p></div>
+ <div id="hint">WASD pour bouger · ESPACE pour tirer · E pour interagir</div>
+ <div id="bottom"><button onclick="openShop()">✦ Boutique NOVA</button><button onclick="resetPlayer()">Recentrer</button></div>
+</div>
+<div id="touch"><div class="pad"><span></span><button data-m="forward">▲</button><span></span><button data-m="left">◀</button><button data-m="back">▼</button><button data-m="right">▶</button></div><button id="kick">TIRER</button></div>
+<div id="modal"><div class="box panel"><h2>BOUTIQUE NOVA</h2><p>Personnalise ton aventure avec tes NOVA Coins.</p><div class="items"><button onclick="buy('Aura cyan',120)">Aura cyan · 120</button><button onclick="buy('Trace néon',180)">Trace néon · 180</button><button onclick="buy('Casque futuriste',250)">Casque · 250</button><button onclick="buy('Style violet',150)">Style violet · 150</button></div><p id="shopMsg">Objets cosmétiques de démonstration.</p><button onclick="closeShop()">Fermer</button></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b18);scene.fog=new THREE.Fog(0x070b18,35,115);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,300);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0x9bdfff,0x15102b,2));
+const key=new THREE.DirectionalLight(0xffffff,2.5);key.position.set(-15,28,12);key.castShadow=true;scene.add(key);
+const cyan=new THREE.PointLight(0x16cfff,55,60);cyan.position.set(0,9,0);scene.add(cyan);
+const violet=new THREE.PointLight(0x873cff,45,50);violet.position.set(15,7,-16);scene.add(violet);
+const mat=(c,em=0)=>new THREE.MeshStandardMaterial({color:c,roughness:.55,metalness:.25,emissive:c,emissiveIntensity:em});
+const floorMat=mat(0x111c32);const glowMat=mat(0x18cfff,.9);const purpleMat=mat(0x823cff,.8);
+let world='football',coins=500,items=[];
+const player=new THREE.Group();const body=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.85,6,12),mat(0x20cfff,.22));body.position.y=1.05;body.castShadow=true;player.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.27,18,14),mat(0xe6f4ff));head.position.y=1.82;player.add(head);
+const visor=new THREE.Mesh(new THREE.BoxGeometry(.36,.1,.12),mat(0x14264d,.8));visor.position.set(0,1.86,.23);player.add(visor);scene.add(player);
+let ball,objects=[],worldGroup=new THREE.Group();scene.add(worldGroup);
+function clearWorld(){while(worldGroup.children.length){let o=worldGroup.children.pop();if(o.geometry)o.geometry.dispose();}objects=[];ball=null}
+function addBox(x,y,z,sx,sy,sz,material,group=worldGroup){let m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m}
+function addGlowRing(x,z,color=0x19dfff){let r=new THREE.Mesh(new THREE.TorusGeometry(2.1,.08,10,60),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2}));r.position.set(x,2.2,z);worldGroup.add(r);return r}
+function base(size=70){let g=new THREE.Mesh(new THREE.PlaneGeometry(size,size),floorMat);g.rotation.x=-Math.PI/2;g.receiveShadow=true;worldGroup.add(g);for(let i=-size/2;i<=size/2;i+=5){let a=addBox(i,.015,0,.025,.02,size,mat(0x18304c,.3));let b=addBox(0,.016,i,size,.02,.025,mat(0x18304c,.3));}}
+function stadium(){base(72);addBox(0,.04,0,42,.08,26,mat(0x14733f));let line=mat(0xdaf8ee,.65);addBox(0,.09,-12,42,.035,.08,line);addBox(0,.09,12,42,.035,.08,line);addBox(-21,.09,0,.08,.035,24,line);addBox(21,.09,0,.08,.035,24,line);addBox(0,.09,0,.08,.035,24,line);
+for(let x of [-21,21]){addBox(x,1.5,0,.18,3,8,mat(0xffffff,.25));addBox(x,3,0,.25,.18,8,glowMat)}
+for(let x of [-27,27])for(let z of [-18,18]){addBox(x,5,z,.5,10,.5,purpleMat);let lamp=new THREE.PointLight(0x27dfff,18,28);lamp.position.set(x,9,z);worldGroup.add(lamp)}
+for(let x=-30;x<=30;x+=5){let tower=addBox(x,2,-24,2,4,2,mat(x%2?0x132d55:0x25205a,.3));tower.position.y=2;}
+ball=new THREE.Mesh(new THREE.SphereGeometry(.48,24,18),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.35}));ball.position.set(0,.5,-3);ball.castShadow=true;worldGroup.add(ball);objects.push(ball);
+addGlowRing(-12,-15,0x7b45ff);addGlowRing(12,-15,0x17dfff);
+}
+function race(){base(85);for(let i=0;i<3;i++){let r=new THREE.Mesh(new THREE.TorusGeometry(13+i*3,.5,10,100),mat(i===1?0x1adfff:0x753cff,1));r.rotation.x=Math.PI/2;r.position.y=.5+i*.05;worldGroup.add(r)}for(let i=0;i<18;i++){let a=i*.75;let b=addBox(Math.cos(a)*22,.7,Math.sin(a)*22,1.3,1.4,1.3,i%2?glowMat:purpleMat);b.rotation.y=a}for(let i=-3;i<=3;i++)addBox(i*3,.08,-32,2,.12,8,mat(0x2b3e65));}
+function parkour(){base(75);for(let i=0;i<12;i++){let x=Math.sin(i*.8)*8,z=-i*4;let p=addBox(x,1+i*.13,z,4,1,4,i%2?glowMat:purpleMat);p.userData.float=true;p.userData.phase=i;}addGlowRing(0,-49,0x7affcf);}
+function home(){base(70);for(let i=0;i<7;i++){let x=(i%3-1)*10,z=-Math.floor(i/3)*12-5;addBox(x,1.7,z,7,3.4,7,mat(0x243e67,.25));addBox(x,3.6,z,7.5,.35,7.5,purpleMat);addBox(x,1.2,z+3.56,1.4,2.4,0.15,glowMat);addGlowRing(x,z,0x18dfff)}}
+function setWorld(w){world=w;clearWorld();player.position.set(0,0,8);player.rotation.set(0,0,0);if(w==='football'){stadium();title('STADE NOVA','Terrain de football 3D. Approche du ballon et appuie sur ESPACE pour tirer.')}if(w==='race'){race();title('NOVA RACING','Circuit d’entraînement futuriste. Explore et slalome entre les obstacles.')}if(w==='parkour'){parkour();title('NOVA PARKOUR','Saute de plateforme en plateforme. Espace pour bondir.')}if(w==='home'){home();title('QUARTIER NOVA','Découvre les maisons et imagine ton futur quartier.')} }
+function title(t,d){document.getElementById('worldTitle').textContent=t;document.getElementById('worldDesc').textContent=d}
+setWorld('football');
+const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();action()}if(e.key.toLowerCase()==='e')interact()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+let yaw=0,drag=false,lastX=0;renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX});addEventListener('pointerup',()=>drag=false);addEventListener('pointermove',e=>{if(drag&&e.pointerType==='mouse'){yaw-=(e.clientX-lastX)*.005;lastX=e.clientX}});
+function action(){if(world==='football'&&ball){let dx=ball.position.x-player.position.x,dz=ball.position.z-player.position.z;if(Math.hypot(dx,dz)<3.3){let dir=new THREE.Vector3(Math.sin(yaw),.18,-Math.cos(yaw));ball.userData.vel=dir.multiplyScalar(0.55);coins+=5;updateCoins()}}else if(world==='parkour'){player.userData.vy=.22;}}
+function interact(){if(world==='football')action();else openShop()}
+function updateCoins(){document.getElementById('coins').textContent='✦ '+coins+' NOVA'}
+window.setWorld=setWorld;window.openShop=()=>document.getElementById('modal').style.display='flex';window.closeShop=()=>document.getElementById('modal').style.display='none';window.buy=(name,cost)=>{let el=document.getElementById('shopMsg');if(coins>=cost){coins-=cost;items.push(name);el.textContent='Débloqué : '+name+' !';updateCoins()}else el.textContent='Pas assez de NOVA Coins.'};window.resetPlayer=()=>player.position.set(0,0,8);
+document.querySelectorAll('[data-m]').forEach(b=>{let k=b.dataset.m==='forward'?'w':b.dataset.m==='back'?'s':b.dataset.m==='left'?'a':'d';b.addEventListener('pointerdown',()=>keys[k]=true);['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false))});document.getElementById('kick').addEventListener('pointerdown',action);
+let clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);let move=new THREE.Vector3();if(keys.w||keys.arrowup)move.z-=1;if(keys.s||keys.arrowdown)move.z+=1;if(keys.a||keys.arrowleft)move.x-=1;if(keys.d||keys.arrowright)move.x+=1;
+if(move.lengthSq()){move.normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw);player.position.addScaledVector(move,dt*9);player.rotation.y=Math.atan2(move.x,move.z)}
+if(world==='parkour'){player.userData.vy=(player.userData.vy||0)-dt*.65;player.position.y+=player.userData.vy;if(player.position.y<0){player.position.y=0;player.userData.vy=0}}
+if(ball&&ball.userData.vel){ball.position.addScaledVector(ball.userData.vel,dt*18);ball.userData.vel.multiplyScalar(.985);ball.userData.vel.y-=dt*.4;if(ball.position.y<.48){ball.position.y=.48;ball.userData.vel.y=Math.abs(ball.userData.vel.y)*.45}if(ball.position.z< -12){ball.position.set(0,.5,-3);ball.userData.vel=null;coins+=15;updateCoins()}}
+worldGroup.children.forEach(o=>{if(o.userData.float){o.position.y=1+o.userData.phase*.13+Math.sin(clock.elapsedTime*2+o.userData.phase)*.18}});
+let target=new THREE.Vector3(player.position.x,player.position.y+1.4,player.position.z);let offset=new THREE.Vector3(Math.sin(yaw)*10,6,Math.cos(yaw)*10);camera.position.lerp(target.clone().add(offset),.09);camera.lookAt(target);cyan.position.x=Math.sin(clock.elapsedTime*.5)*18;violet.position.z=Math.cos(clock.elapsedTime*.4)*20;renderer.render(scene,camera)}
+animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
